@@ -1,0 +1,21 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+int main(int argc, const char * argv[]) {
+  if (argc != 4) {
+    perror("Program invoke format: ringmaster <port_num> <num_players> <num_hops>\n");
+    exit(1);
+  }
+  
+  int N = 5;
+  int hobs = 21;
+
+  return 0;
+}
