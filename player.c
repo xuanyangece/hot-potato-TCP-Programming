@@ -14,52 +14,60 @@ int main(int argc, const char * argv[]) {
         exit(1);
     }
 
-    // get address & port num
-    const char *hostname = argv[1];
-    const char *port = argv[2];
-    struct addrinfo host_info;
-    struct addrinfo *host_info_list;
+    // Get server ip
+    struct hostent *hent;
+    hent = gethostbyname(argv[1]);
+    if (NULL == hent) {
+        return -1;
+    }
+    char * serIP;
+    // get from h_addr
+    serIP = inet_ntoa(*(struct in_addr*)hent->h_addr);
+
+    // get server address
+    struct sockaddr_in masterAddr;
+    int count = 0;
+    int PORT = atoi(argv[2]);
 
     // player parameters
-    int socket_fd;
+    int player_fd;
     int id;
-    int neighbor[3] = {0, 0, 0}; // left, right, master
     char buffer[512];
 
-    memset(&host_info, 0, sizeof(host_info));
-    host_info.ai_family   = AF_INET;
-    host_info.ai_socktype = SOCK_STREAM;
+    // neighbor info
+    struct sockaddr_in neighborAddr[2];
+    int neighbor[2] = {0, 0}; // left, right
+    
 
-    // get server info
-    if (getaddrinfo(hostname, port, &host_info, &host_info_list) != 0) {
-        perror("Error: cannot get address info for host\n");
-        exit(1);
-    } //if
+    memset(&masterAddr, 0, sizeof(masterAddr));
+    masterAddr.sin_family = AF_INET;
+    masterAddr.sin_port = htons(PORT);
+    masterAddr.sin_addr.s_addr = inet_addr(serIP); // modify later
 
-    // create socket
-    socket_fd = socket(host_info_list->ai_family, host_info_list->ai_socktype, host_info_list->ai_protocol);
-    if (socket_fd == -1) {
+    // create socket - self <-> ringmaster
+    player_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (player_fd == -1) {
         perror("Error: cannot create socket\n");
         exit(1);
     } //if
 
     // connect
-    if (connect(socket_fd, host_info_list->ai_addr, host_info_list->ai_addrlen) == -1) {
+    if (connect(player_fd, (struct sockaddr*)&masterAddr, sizeof(masterAddr)) < 0) {
         perror("Error: cannot connect to socket\n");
         exit(1);
     }
 
     while (1) {
-        if (recv(socket_fd, buffer, 512, 0) < 0) {
+        if (count == 0 && recv(player_fd, buffer, 512, 0) < 0) {
             printf("Error in receiving data.\n");
-        } else {
+        } else if (count == 0) {
             char *id = strtok(buffer, " ");
             char *n = strtok(NULL, " ");
             printf("Connected as player %s out of %s total players\n", id, n);
-        }
+        } 
 
-        close(socket_fd);
-        printf("Disconnected from server.\n");
+        close(player_fd);
+        printf("Disconnect\n");
         exit(1);
     }
     return 0;
