@@ -100,6 +100,8 @@ int main(int argc, const char *argv[]) {
   // get from h_addr
   selfIP = inet_ntoa(*(struct in_addr *)selfhent->h_addr);
 
+  printf("My IP is: %s\n", selfIP);
+
   // Initial memory address
   memset(&selfAddr, '\0', sizeof(selfAddr));
   selfAddr.sin_family = AF_INET;
@@ -157,7 +159,7 @@ int main(int argc, const char *argv[]) {
     } else if (count == 1) {
       if (recv(player_fd, buffer, 512, 0) <
           0) { // second recv: "leftIP leftPORT " - get address for neighbor and
-        // build connection
+               // build connection
         printf("Error in receiving data 1.\n");
       } else {
         /***************************************************
@@ -212,10 +214,21 @@ int main(int argc, const char *argv[]) {
         count++;
       }
     } else if (count == 2) {
+      printf("\nAll connection established! Let's get some potato!\n");
+
+      // TEMPORT CLOSE
+      close(player_fd);
+      close(left_fd);
+      close(right_r_fd);
+      close(right_s_fd);
+      printf("Disconnect\n");
+      exit(1);
+
       if (recv(player_fd, buffer, 512, 0) <
           0) { // third recv: "hops " - get hops from server
         printf("Error in receiving data 2.\n");
       } else {
+        printf("Received potato! I'm ID%d", ID);
       }
     }
 

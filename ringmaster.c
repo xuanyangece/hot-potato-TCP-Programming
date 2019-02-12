@@ -34,10 +34,9 @@ int main(int argc, const char *argv[]) {
   int *player_PORT = malloc(sizeof(*player_PORT) * N);
   struct sockaddr_in *playerAddr = malloc(sizeof(*playerAddr) * N); // newAddr
 
-  socklen_t len;
+  socklen_t len = sizeof(masterAddr);
 
   char buffer[512];
-  pid_t childpid;
   int count = 0;
 
   // Print initial message
@@ -136,6 +135,16 @@ int main(int argc, const char *argv[]) {
         count++;
       } else if (count == 1) { // step2: throw the potato
         printf("I'm going to throw potato now\n");
+
+        close(master_fd);
+        for (int i = 0; i < N; i++) {
+          close(player_fd[i]);
+        }
+        free(playerAddr);
+        free(player_PORT);
+        free(player_fd);
+
+        exit(1);
       }
     }
   }
