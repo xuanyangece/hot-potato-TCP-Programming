@@ -60,11 +60,11 @@ int main(int argc, const char *argv[]) {
   // neighbor parameters
   struct sockaddr_in selfAddr;
   int left_fd;
-  int PORTL = 11;
+  int PORTL = 1025;
   struct sockaddr_in leftAddr; // for sending
   int right_r_fd;
   int right_s_fd;
-  int PORTR = 13;
+  int PORTR = 1026;
   struct sockaddr_in rightAddr; // for sending
   socklen_t len;
 
@@ -124,15 +124,6 @@ int main(int argc, const char *argv[]) {
 
   printf("Successfully listening\n");
 
-  // accept
-  right_s_fd = accept(right_r_fd, (struct sockaddr *)&selfAddr, &len);
-  if (right_s_fd < 0) {
-    perror("right accept fails\n");
-    exit(1);
-  }
-
-  printf("Successfully accept\n");
-
   while (1) {
     if (count == 0) {
       printf("ready to receive\n");
@@ -166,12 +157,24 @@ int main(int argc, const char *argv[]) {
     } else if (count == 1) {
       if (recv(player_fd, buffer, 512, 0) <
           0) { // second recv: "leftIP leftPORT " - get address for neighbor and
-               // build connection
+        // build connection
         printf("Error in receiving data 1.\n");
       } else {
         /***************************************************
          * left socket sends connection, right socket waits *
          ***************************************************/
+
+        if (ID == 0) { // for the first one, accept first
+          // accept
+          right_s_fd = accept(right_r_fd, (struct sockaddr *)&selfAddr, &len);
+
+          if (right_s_fd < 0) {
+            perror("right accept fails\n");
+            exit(1);
+          }
+
+          printf("ID %d right port successfully accept\n", ID);
+        }
 
         char *leftIP = strtok(buffer, " ");
         char *leftPORT = strtok(NULL, " ");
@@ -191,6 +194,18 @@ int main(int argc, const char *argv[]) {
         }
 
         printf("Connect player %d's left socket to %s\n", ID, leftIP);
+
+        if (ID != 0) { // for the rest, coonect first, accept later
+          // accept
+          right_s_fd = accept(right_r_fd, (struct sockaddr *)&selfAddr, &len);
+
+          if (right_s_fd < 0) {
+            perror("right accept fails\n");
+            exit(1);
+          }
+
+          printf("ID %d right port successfully accept\n", ID);
+        }
 
         // reset buffer & update count
         memset(buffer, '\0', sizeof(buffer));
