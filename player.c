@@ -60,11 +60,11 @@ int main(int argc, const char *argv[]) {
   // neighbor parameters
   struct sockaddr_in selfAddr;
   int left_fd;
-  int PORTL = PORT;
+  int PORTL = 11;
   struct sockaddr_in leftAddr; // for sending
   int right_r_fd;
   int right_s_fd;
-  int PORTR = PORT;
+  int PORTR = 13;
   struct sockaddr_in rightAddr; // for sending
   socklen_t len;
 
@@ -114,11 +114,15 @@ int main(int argc, const char *argv[]) {
     selfAddr.sin_addr.s_addr = inet_addr(selfIP);
   }
 
+  printf("Successfully bind port: %d\n", PORTR);
+
   // Listening
   if (listen(right_r_fd, 1) != 0) { /* need to change N? */
     perror("Error in listening right.\n");
     exit(1);
   }
+
+  printf("Successfully listening\n");
 
   // accept
   right_s_fd = accept(right_r_fd, (struct sockaddr *)&selfAddr, &len);
@@ -127,8 +131,11 @@ int main(int argc, const char *argv[]) {
     exit(1);
   }
 
+  printf("Successfully accept\n");
+
   while (1) {
     if (count == 0) {
+      printf("ready to receive\n");
       if (recv(player_fd, buffer, 512, 0) <
           0) // first recv: "ID N " - used for get ID and N
         printf("Error in receiving data 0.\n");
