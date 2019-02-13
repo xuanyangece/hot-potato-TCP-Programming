@@ -4,8 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 int main(int argc, const char *argv[]) {
@@ -28,6 +30,7 @@ int main(int argc, const char *argv[]) {
   // socket variables
   int master_fd, ret;
   struct sockaddr_in masterAddr;
+  fd_set readfds;
 
   int playerID = 0;
   int *player_fd = malloc(sizeof(*player_fd) * N); // newSocket
@@ -136,26 +139,78 @@ int main(int argc, const char *argv[]) {
       } else if (count == 1) { // step2: throw the potato
         printf("I'm going to throw potato now\n");
 
-        close(master_fd);
-        for (int i = 0; i < N; i++) {
-          close(player_fd[i]);
-        }
-        free(playerAddr);
-        free(player_PORT);
-        free(player_fd);
+        // generate player
+        srand(time(0));
+        int startplayer = rand() % N;
 
-        exit(1);
+        // set buffer for start
+        memset(buffer, '\0', sizeof(buffer));
+        sprintf(buffer, "%d", hops);
+
+        // send to player and print message
+        send(player_fd[startplayer], buffer, 512, 0);
+        printf("Ready to start the game, sending potato to player %d\n",
+               startplayer);
+        printf("Trace of potato:\n");
+
+        // select
+        while (1) {
+          FD_ZERO(&readfds);
+          int max_fd = player_fd[0];
+          for (int i = 0; i < N; i++) {
+            FD_SET(player_fd[i], &readfds);
+            if (player_fd[i] > max_fd)
+              max_fd = player_fd[i];
+          }
+          // wait for an activity on one of the sockets , timeout is NULL , so
+          // wait infinitely
+          int activity = select(max_fd + 1, &readfds, NULL, NULL, NULL);
+          if (activity < 0) {
+            printf("Select error\n");
+          }
+
+          // reset buffer
+          memset(buffer, '\0', sizeof(buffer));
+
+          // receive hop
+          for (int i = 0; i < N; i++) {
+            if (FD_ISSET(player_fd[i], &readfds)) {
+              if (recv(player_fd[i], buffer, 512, 0) < 0) {
+                perror("Error in receiving hop\n");
+                exit(1);
+              }
+
+              // get message: -1 to stop, others continue
+              int msg = atoi(buffer);
+              if (msg != -1) {
+                printf("<%d>,", i);
+              } else {
+                // send everyone back
+                for (int j = 0; j < N; j++) {
+                  // set buffer to -1
+                  memset(buffer, '\0', sizeof(buffer));
+                  int end = -1;
+                  sprintf(buffer, "%d", end);
+
+                  send(player_fd[i], buffer, 512, 0);
+                }
+
+                close(master_fd);
+                for (int i = 0; i < N; i++) {
+                  close(player_fd[i]);
+                }
+                free(playerAddr);
+                free(player_PORT);
+                free(player_fd);
+
+                exit(1);
+              }
+            }
+          }
+        }
       }
     }
   }
-
-  close(master_fd);
-  for (int i = 0; i < N; i++) {
-    close(player_fd[i]);
-  }
-  free(playerAddr);
-  free(player_PORT);
-  free(player_fd);
 
   return 0;
 }

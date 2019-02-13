@@ -4,8 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 int main(int argc, const char *argv[]) {
@@ -66,6 +68,7 @@ int main(int argc, const char *argv[]) {
   int right_s_fd;
   int PORTR = 1026;
   struct sockaddr_in rightAddr; // for sending
+  fd_set readfds;
   socklen_t len;
 
   /***********************
@@ -216,25 +219,101 @@ int main(int argc, const char *argv[]) {
     } else if (count == 2) {
       printf("\nAll connection established! Let's get some potato!\n");
 
+      int activity = 0;
+      int max_fd = 1;
+      if (left_fd > right_r_fd && left_fd > right_r_fd)
+        max_fd = left_fd;
+      else if (right_r_fd > left_fd && right_r_fd > player_fd)
+        max_fd = right_r_fd;
+      else
+        max_fd = player_fd;
+
+      /**************************
+       *     fd_set & select     *
+       **************************/
+      while (1) {
+        FD_ZERO(&readfds);
+        // socket to read set
+        FD_SET(left_fd, &readfds);
+        FD_SET(right_r_fd, &readfds);
+        FD_SET(player_fd, &readfds);
+
+        activity = select(max_fd + 1, &readfds, NULL, NULL, NULL);
+        if (activity < 0) {
+          printf("Select error\n");
+        }
+
+        // reset buffer
+        memset(buffer, '\0', sizeof(buffer));
+
+        // receive hop
+        if (FD_ISSET(left_fd, &readfds))
+          recv(left_fd, buffer, 512, 0);
+        else if (FD_ISSET(right_r_fd, &readfds))
+          recv(right_r_fd, buffer, 512, 0);
+        else
+          recv(player_fd, buffer, 512, 0);
+
+        int hop = atoi(buffer);
+
+        // determine whether continue(>1) or stop(==1) or end(==-1)
+        if (hop > 1) { // continue
+          // decrease hop
+          hop--;
+
+          // choose neighbor
+          srand(time(0));
+          int option = (rand() % 10) + 1;
+
+          // set buffer for neighbor
+          memset(buffer, '\0', sizeof(buffer));
+          sprintf(buffer, "%d", hop);
+
+          // send to neighbor
+          if (option <= 5) { // send to left
+            send(left_fd, buffer, 512, 0);
+            int receiver = ID == 0 ? N - 1 : ID - 1;
+            printf("Sending potato to %d\n", receiver);
+          } else { // send to right
+            send(right_s_fd, buffer, 512, 0);
+            int receiver = ID == N - 1 ? 0 : ID + 1;
+            printf("Sending potato to %d\n", receiver);
+          }
+
+          // set buffer for master
+          memset(buffer, '\0', sizeof(buffer));
+          sprintf(buffer, "%d", ID);
+
+          send(player_fd, buffer, 512, 0);
+
+          // reset buffer
+          memset(buffer, '\0', sizeof(buffer));
+        } else if (hop == 1) { // stop
+          // set buffer
+          memset(buffer, '\0', sizeof(buffer));
+          sprintf(buffer, "%d", ID);
+
+          // send to master
+          send(player_fd, buffer, 512, 0);
+
+          printf("I'm it\n");
+
+          // reset buffer
+          memset(buffer, '\0', sizeof(buffer));
+        } else if (hop == -1) { // end
+          break;
+        }
+      }
+
       // TEMPORT CLOSE
       close(player_fd);
       close(left_fd);
       close(right_r_fd);
       close(right_s_fd);
-      printf("Disconnect\n");
+      printf("Disconnect, ready to exit\n");
       exit(1);
-
-      if (recv(player_fd, buffer, 512, 0) <
-          0) { // third recv: "hops " - get hops from server
-        printf("Error in receiving data 2.\n");
-      } else {
-        printf("Received potato! I'm ID%d", ID);
-      }
     }
-
-    // close(player_fd);
-    // printf("Disconnect\n");
-    // exit(1);
   }
+
   return 0;
 }
