@@ -146,7 +146,7 @@ int main(int argc, const char *argv[]) {
         N = atoi(n);
 
         // print status
-        printf("Connected as player %s out of %s total players\n", id, n);
+        printf("Connected as player %d out of %d total players\n", ID + 1, N);
 
         // set buffer
         memset(buffer, '\0', sizeof(buffer));
@@ -261,16 +261,22 @@ int main(int argc, const char *argv[]) {
           exit(1);
         }
 
+        printf("Copy buffer: '%s'\n", buffer);
         // parse buffer
         int ending = 0;
         char temp[2048] = {'\0'};
         strcpy(temp, buffer);
 
         // count buffer
+        printf("Count buffer\n");
+        if (temp[0] == '\0')
+          break;
         char *curt = strtok(temp, " ");
+        printf("Strtok buffer");
         int count = atoi(curt);
+        printf("count: %d\n", count);
 
-        if (count > 0) { // not end
+        if (count >= 0) { // not end
           // count how many iterations have been made
           while (curt != NULL) {
             count--;
@@ -278,7 +284,7 @@ int main(int argc, const char *argv[]) {
           }
 
           // right on target, stop
-          if (count == 1) {
+          if (count == 0) {
             // get added string
             char tempadd[20] = {'\0'};
             memset(tempadd, '\0', sizeof(tempadd));

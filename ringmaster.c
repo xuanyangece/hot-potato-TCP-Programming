@@ -146,6 +146,10 @@ int main(int argc, const char *argv[]) {
         // stop for some while
         sleep(2);
 
+        // set buffer for start
+        memset(buffer, '\0', sizeof(buffer));
+        sprintf(buffer, "%d", hops);
+
         // send to player and print message
         send(player_fd[startplayer], buffer, 2048, 0);
         printf("Ready to start the game, sending potato to player %d\n",
@@ -154,6 +158,10 @@ int main(int argc, const char *argv[]) {
         // select
         while (1) {
           printf("Enter select\n");
+
+          // reset buffer
+          memset(buffer, '\0', sizeof(buffer));
+
           FD_ZERO(&readfds);
           int max_fd = player_fd[0];
           for (int i = 0; i < N; i++) {
@@ -176,28 +184,46 @@ int main(int argc, const char *argv[]) {
                 exit(1);
               }
 
-              printf("Final receive: %s\n", buffer);
+              printf("Final receive: '%s'\n", buffer);
 
               printf("Trace of potato:\n");
 
-              char *curt = strtok(buffer, " ");
+              char temp[2048] = {'\0'};
+              strcpy(temp, buffer);
+
+              printf("temp: '%s'\n", temp);
+
+              char *curt = strtok(temp, " ");
               while (curt != NULL) {
+                printf("Enter tok\n");
                 curt = strtok(NULL, " ");
-                printf("<%d>", atoi(curt));
+                printf("After tok\n");
+                if (curt == NULL)
+                  break;
+                int num = atoi(curt);
+                printf("<%d>", num);
                 if (hops > 1)
                   printf(",");
                 hops--;
+                printf("last line of loop\n");
               }
+
+              printf("ready to send everyone back\n");
+
+              sleep(1);
 
               // send everyone back
               for (int j = 0; j < N; j++) {
                 // set buffer to -1
                 memset(buffer, '\0', sizeof(buffer));
                 int end = -1;
-                sprintf(buffer, "%d", end);
+                sprintf(buffer, "%d ", end);
+                printf("j: %d. buffer: %s. fd: %d", j, buffer, player_fd[j]);
 
-                send(player_fd[i], buffer, 512, 0);
+                send(player_fd[j], buffer, 2048, 0);
               }
+
+              sleep(1);
 
               // close the game
               close(master_fd);
