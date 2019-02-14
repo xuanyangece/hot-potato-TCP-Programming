@@ -34,7 +34,7 @@ int main(int argc, const char *argv[]) {
   int player_fd;
   int ID;
   int N;
-  char buffer[512];
+  char buffer[2048];
 
   /***********************
    *        master        *
@@ -69,7 +69,7 @@ int main(int argc, const char *argv[]) {
   int PORTR = 1026;
   struct sockaddr_in rightAddr; // for sending
   fd_set readfds;
-  socklen_t len;
+  socklen_t len = sizeof(selfAddr);
 
   /***********************
    *         left         *
@@ -132,7 +132,7 @@ int main(int argc, const char *argv[]) {
   while (1) {
     if (count == 0) {
       printf("ready to receive\n");
-      if (recv(player_fd, buffer, 512, 0) <
+      if (recv(player_fd, buffer, 2048, 0) <
           0) // first recv: "ID N " - used for get ID and N
         printf("Error in receiving data 0.\n");
       else {
@@ -153,14 +153,14 @@ int main(int argc, const char *argv[]) {
         sprintf(buffer, "%d", PORTR);
 
         // send port number
-        send(player_fd, buffer, 512, 0);
+        send(player_fd, buffer, 2048, 0);
 
         // reset buffer & update count
         memset(buffer, '\0', sizeof(buffer));
         count++;
       }
     } else if (count == 1) {
-      if (recv(player_fd, buffer, 512, 0) <
+      if (recv(player_fd, buffer, 2048, 0) <
           0) { // second recv: "leftIP leftPORT " - get address for neighbor and
                // build connection
         printf("Error in receiving data 1.\n");
@@ -221,10 +221,10 @@ int main(int argc, const char *argv[]) {
 
       int activity = 0;
       int max_fd = 1;
-      if (left_fd > right_r_fd && left_fd > right_r_fd)
+      if (left_fd > right_s_fd && left_fd > player_fd)
         max_fd = left_fd;
-      else if (right_r_fd > left_fd && right_r_fd > player_fd)
-        max_fd = right_r_fd;
+      else if (right_s_fd > left_fd && right_s_fd > player_fd)
+        max_fd = right_s_fd;
       else
         max_fd = player_fd;
 
@@ -235,72 +235,92 @@ int main(int argc, const char *argv[]) {
         FD_ZERO(&readfds);
         // socket to read set
         FD_SET(left_fd, &readfds);
-        FD_SET(right_r_fd, &readfds);
+        FD_SET(right_s_fd, &readfds);
         FD_SET(player_fd, &readfds);
 
+        printf("Just before select\n");
         activity = select(max_fd + 1, &readfds, NULL, NULL, NULL);
         if (activity < 0) {
           printf("Select error\n");
         }
+        printf("Just after select\n");
 
         // reset buffer
         memset(buffer, '\0', sizeof(buffer));
 
         // receive hop
+        int res = 0;
         if (FD_ISSET(left_fd, &readfds))
-          recv(left_fd, buffer, 512, 0);
-        else if (FD_ISSET(right_r_fd, &readfds))
-          recv(right_r_fd, buffer, 512, 0);
+          res = recv(left_fd, buffer, 2048, 0);
+        else if (FD_ISSET(right_s_fd, &readfds))
+          res = recv(right_s_fd, buffer, 2048, 0);
         else
-          recv(player_fd, buffer, 512, 0);
+          res = recv(player_fd, buffer, 2048, 0);
+        if (res < 0) {
+          perror("Error in receiving hop\n");
+          exit(1);
+        }
 
-        int hop = atoi(buffer);
+        // parse buffer
+        int ending = 0;
+        char temp[2048] = {'\0'};
+        strcpy(temp, buffer);
 
-        // determine whether continue(>1) or stop(==1) or end(==-1)
-        if (hop > 1) { // continue
-          // decrease hop
-          hop--;
+        // count buffer
+        char *curt = strtok(temp, " ");
+        int count = atoi(curt);
 
-          // choose neighbor
-          srand(time(0));
-          int option = (rand() % 10) + 1;
-
-          // set buffer for neighbor
-          memset(buffer, '\0', sizeof(buffer));
-          sprintf(buffer, "%d", hop);
-
-          // send to neighbor
-          if (option <= 5) { // send to left
-            send(left_fd, buffer, 512, 0);
-            int receiver = ID == 0 ? N - 1 : ID - 1;
-            printf("Sending potato to %d\n", receiver);
-          } else { // send to right
-            send(right_s_fd, buffer, 512, 0);
-            int receiver = ID == N - 1 ? 0 : ID + 1;
-            printf("Sending potato to %d\n", receiver);
+        if (count > 0) { // not end
+          // count how many iterations have been made
+          while (curt != NULL) {
+            count--;
+            curt = strtok(NULL, " ");
           }
 
-          // set buffer for master
-          memset(buffer, '\0', sizeof(buffer));
-          sprintf(buffer, "%d", ID);
+          // right on target, stop
+          if (count == 1) {
+            // get added string
+            char tempadd[20] = {'\0'};
+            memset(tempadd, '\0', sizeof(tempadd));
+            sprintf(tempadd, " %d", ID);
 
-          send(player_fd, buffer, 512, 0);
+            // concatenate
+            strcat(buffer, tempadd);
 
-          // reset buffer
-          memset(buffer, '\0', sizeof(buffer));
-        } else if (hop == 1) { // stop
-          // set buffer
-          memset(buffer, '\0', sizeof(buffer));
-          sprintf(buffer, "%d", ID);
+            send(player_fd, buffer, 2048, 0);
+            printf("I'm it\n");
+          } else { // continue
+            // get added string
+            char tempadd[20] = {'\0'};
+            memset(tempadd, '\0', sizeof(tempadd));
+            sprintf(tempadd, " %d", ID);
 
-          // send to master
-          send(player_fd, buffer, 512, 0);
+            // concatenate
+            strcat(buffer, tempadd);
 
-          printf("I'm it\n");
+            // choose neighbor
+            srand(time(0));
+            int option = (rand() % 10) + 1;
 
-          // reset buffer
-          memset(buffer, '\0', sizeof(buffer));
-        } else if (hop == -1) { // end
+            sleep(1);
+
+            // send to neighbor
+            if (option <= 5) { // send to left
+              send(left_fd, buffer, 2048, 0);
+              int receiver = ID == 0 ? N - 1 : ID - 1;
+              printf("Sending potato to %d\n", receiver);
+            } else { // send to right
+              send(right_s_fd, buffer, 2048, 0);
+              int receiver = ID == N - 1 ? 0 : ID + 1;
+              printf("Sending potato to %d\n", receiver);
+            }
+
+            printf("I'm sending %s\n", buffer);
+
+            // reset buffer
+            memset(buffer, '\0', sizeof(buffer));
+          }
+        } else { // end
           break;
         }
       }

@@ -22,7 +22,7 @@ int main(int argc, const char *argv[]) {
   int N = atoi(argv[2]);
   int hops = atoi(argv[3]);
 
-  if (N < 1 || hops < 0 || hops > 512) {
+  if (N < 1 || hops < 0 || hops > 2048) {
     perror("Invalid num_players or num_hops\n");
     exit(1);
   }
@@ -39,7 +39,7 @@ int main(int argc, const char *argv[]) {
 
   socklen_t len = sizeof(masterAddr);
 
-  char buffer[512];
+  char buffer[2048];
   int count = 0;
 
   // Print initial message
@@ -105,11 +105,11 @@ int main(int argc, const char *argv[]) {
       sprintf(buffer, "%d %d ", playerID, N);
 
       // send ID
-      send(player_fd[playerID], buffer, 512, 0);
+      send(player_fd[playerID], buffer, 2048, 0);
 
       // receive PORT
       memset(buffer, '\0', sizeof(buffer));
-      recv(player_fd[playerID], buffer, 512, 0);
+      recv(player_fd[playerID], buffer, 2048, 0);
       player_PORT[playerID] = atoi(buffer);
 
       // reset buffer & increase ID
@@ -132,7 +132,7 @@ int main(int argc, const char *argv[]) {
                  "%s - PORT: %d\n",
                  i, left, inet_ntoa(playerAddr[left].sin_addr),
                  player_PORT[left]);
-          send(player_fd[i], buffer, 512, 0);
+          send(player_fd[i], buffer, 2048, 0);
         }
 
         count++;
@@ -143,18 +143,17 @@ int main(int argc, const char *argv[]) {
         srand(time(0));
         int startplayer = rand() % N;
 
-        // set buffer for start
-        memset(buffer, '\0', sizeof(buffer));
-        sprintf(buffer, "%d", hops);
+        // stop for some while
+        sleep(2);
 
         // send to player and print message
-        send(player_fd[startplayer], buffer, 512, 0);
+        send(player_fd[startplayer], buffer, 2048, 0);
         printf("Ready to start the game, sending potato to player %d\n",
                startplayer);
-        printf("Trace of potato:\n");
 
         // select
         while (1) {
+          printf("Enter select\n");
           FD_ZERO(&readfds);
           int max_fd = player_fd[0];
           for (int i = 0; i < N; i++) {
@@ -169,42 +168,47 @@ int main(int argc, const char *argv[]) {
             printf("Select error\n");
           }
 
-          // reset buffer
-          memset(buffer, '\0', sizeof(buffer));
-
           // receive hop
           for (int i = 0; i < N; i++) {
             if (FD_ISSET(player_fd[i], &readfds)) {
-              if (recv(player_fd[i], buffer, 512, 0) < 0) {
+              if (recv(player_fd[i], buffer, 2048, 0) < 0) {
                 perror("Error in receiving hop\n");
                 exit(1);
               }
 
-              // get message: -1 to stop, others continue
-              int msg = atoi(buffer);
-              if (msg != -1) {
-                printf("<%d>,", i);
-              } else {
-                // send everyone back
-                for (int j = 0; j < N; j++) {
-                  // set buffer to -1
-                  memset(buffer, '\0', sizeof(buffer));
-                  int end = -1;
-                  sprintf(buffer, "%d", end);
+              printf("Final receive: %s\n", buffer);
 
-                  send(player_fd[i], buffer, 512, 0);
-                }
+              printf("Trace of potato:\n");
 
-                close(master_fd);
-                for (int i = 0; i < N; i++) {
-                  close(player_fd[i]);
-                }
-                free(playerAddr);
-                free(player_PORT);
-                free(player_fd);
-
-                exit(1);
+              char *curt = strtok(buffer, " ");
+              while (curt != NULL) {
+                curt = strtok(NULL, " ");
+                printf("<%d>", atoi(curt));
+                if (hops > 1)
+                  printf(",");
+                hops--;
               }
+
+              // send everyone back
+              for (int j = 0; j < N; j++) {
+                // set buffer to -1
+                memset(buffer, '\0', sizeof(buffer));
+                int end = -1;
+                sprintf(buffer, "%d", end);
+
+                send(player_fd[i], buffer, 512, 0);
+              }
+
+              // close the game
+              close(master_fd);
+              for (int i = 0; i < N; i++) {
+                close(player_fd[i]);
+              }
+              free(playerAddr);
+              free(player_PORT);
+              free(player_fd);
+
+              exit(1);
             }
           }
         }
