@@ -132,6 +132,32 @@ int main(int argc, const char *argv[]) {
 
         count++;
       } else if (count == 1) { // step2: throw the potato
+        // hops == 0, immediately shut down
+        if (hops == 0) {
+          // tell player to end
+          for (int j = 0; j < N; j++) {
+            // set buffer to -1
+            memset(buffer, '\0', sizeof(buffer));
+            int end = -1;
+            sprintf(buffer, "%d ", end);
+
+            send(player_fd[j], buffer, 2048, 0);
+          }
+
+          sleep(1);
+
+          // close the game
+          close(master_fd);
+          for (int i = 0; i < N; i++) {
+            close(player_fd[i]);
+          }
+          free(playerAddr);
+          free(player_PORT);
+          free(player_fd);
+
+          exit(1);
+        }
+
         // generate player
         srand(time(0));
         int startplayer = rand() % N;

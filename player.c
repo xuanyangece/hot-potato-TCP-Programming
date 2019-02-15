@@ -293,11 +293,11 @@ int main(int argc, const char *argv[]) {
             if (option <= 5) { // send to left
               send(left_fd, buffer, 2048, 0);
               int receiver = ID == 0 ? N - 1 : ID - 1;
-              printf("Sending potato to %d\n", receiver);
+              printf("Sending potato to %d\n", receiver + 1);
             } else { // send to right
               send(right_s_fd, buffer, 2048, 0);
               int receiver = ID == N - 1 ? 0 : ID + 1;
-              printf("Sending potato to %d\n", receiver);
+              printf("Sending potato to %d\n", receiver + 1);
             }
 
             // reset buffer
