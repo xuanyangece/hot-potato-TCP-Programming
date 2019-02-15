@@ -1,3 +1,5 @@
+all:ringmaster player
+
 ringmaster:ringmaster.c
 	gcc -o ringmaster ringmaster.c
 
