@@ -110,6 +110,8 @@ int main(int argc, const char *argv[]) {
       recv(player_fd[playerID], buffer, 2048, 0);
       player_PORT[playerID] = atoi(buffer);
 
+      printf("Player %d is ready to play\n", playerID + 1);
+
       // reset buffer & increase ID
       memset(buffer, '\0', sizeof(buffer));
       playerID++;
