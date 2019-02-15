@@ -22,7 +22,7 @@ int main(int argc, const char *argv[]) {
   int N = atoi(argv[2]);
   int hops = atoi(argv[3]);
 
-  if (N < 1 || hops < 0 || hops > 2048) {
+  if (N <= 1 || hops < 0 || hops > 2048) {
     perror("Invalid num_players or num_hops\n");
     exit(1);
   }
@@ -97,8 +97,6 @@ int main(int argc, const char *argv[]) {
       if (player_fd[playerID] < 0) {
         exit(1);
       }
-      printf("Player %d is ready to play\n", playerID);
-      printf("Accept from %s\n", inet_ntoa(playerAddr[playerID].sin_addr));
 
       // set buffer
       memset(buffer, '\0', sizeof(buffer));
@@ -118,7 +116,6 @@ int main(int argc, const char *argv[]) {
     } else { // start game
       if (count ==
           0) { // step1: send address of left neighbor - "leftAddr leftPORT "
-        printf("Ready to start the game, set's get some address done\n");
 
         for (int i = 0; i < N; i++) {
           int left = i == 0 ? N - 1 : i - 1;
@@ -128,17 +125,11 @@ int main(int argc, const char *argv[]) {
           sprintf(buffer, "%s %d ", inet_ntoa(playerAddr[left].sin_addr),
                   player_PORT[left]);
 
-          printf("Sending No.%d player the address of its left player No.%d: "
-                 "%s - PORT: %d\n",
-                 i, left, inet_ntoa(playerAddr[left].sin_addr),
-                 player_PORT[left]);
           send(player_fd[i], buffer, 2048, 0);
         }
 
         count++;
       } else if (count == 1) { // step2: throw the potato
-        printf("I'm going to throw potato now\n");
-
         // generate player
         srand(time(0));
         int startplayer = rand() % N;
@@ -157,8 +148,6 @@ int main(int argc, const char *argv[]) {
 
         // select
         while (1) {
-          printf("Enter select\n");
-
           // reset buffer
           memset(buffer, '\0', sizeof(buffer));
 
@@ -184,31 +173,24 @@ int main(int argc, const char *argv[]) {
                 exit(1);
               }
 
-              printf("Final receive: '%s'\n", buffer);
-
               printf("Trace of potato:\n");
 
               char temp[2048] = {'\0'};
               strcpy(temp, buffer);
 
-              printf("temp: '%s'\n", temp);
-
               char *curt = strtok(temp, " ");
               while (curt != NULL) {
-                printf("Enter tok\n");
                 curt = strtok(NULL, " ");
-                printf("After tok\n");
                 if (curt == NULL)
                   break;
                 int num = atoi(curt);
                 printf("<%d>", num);
                 if (hops > 1)
                   printf(",");
+                else
+                  printf("\n");
                 hops--;
-                printf("last line of loop\n");
               }
-
-              printf("ready to send everyone back\n");
 
               sleep(1);
 
@@ -218,7 +200,6 @@ int main(int argc, const char *argv[]) {
                 memset(buffer, '\0', sizeof(buffer));
                 int end = -1;
                 sprintf(buffer, "%d ", end);
-                printf("j: %d. buffer: %s. fd: %d", j, buffer, player_fd[j]);
 
                 send(player_fd[j], buffer, 2048, 0);
               }

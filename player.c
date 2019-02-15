@@ -103,8 +103,6 @@ int main(int argc, const char *argv[]) {
   // get from h_addr
   selfIP = inet_ntoa(*(struct in_addr *)selfhent->h_addr);
 
-  printf("My IP is: %s\n", selfIP);
-
   // Initial memory address
   memset(&selfAddr, '\0', sizeof(selfAddr));
   selfAddr.sin_family = AF_INET;
@@ -119,19 +117,14 @@ int main(int argc, const char *argv[]) {
     selfAddr.sin_addr.s_addr = inet_addr(selfIP);
   }
 
-  printf("Successfully bind port: %d\n", PORTR);
-
   // Listening
   if (listen(right_r_fd, 1) != 0) { /* need to change N? */
     perror("Error in listening right.\n");
     exit(1);
   }
 
-  printf("Successfully listening\n");
-
   while (1) {
     if (count == 0) {
-      printf("ready to receive\n");
       if (recv(player_fd, buffer, 2048, 0) <
           0) // first recv: "ID N " - used for get ID and N
         printf("Error in receiving data 0.\n");
@@ -177,8 +170,6 @@ int main(int argc, const char *argv[]) {
             perror("right accept fails\n");
             exit(1);
           }
-
-          printf("ID %d right port successfully accept\n", ID);
         }
 
         char *leftIP = strtok(buffer, " ");
@@ -198,8 +189,6 @@ int main(int argc, const char *argv[]) {
           exit(1);
         }
 
-        printf("Connect player %d's left socket to %s\n", ID, leftIP);
-
         if (ID != 0) { // for the rest, coonect first, accept later
           // accept
           right_s_fd = accept(right_r_fd, (struct sockaddr *)&selfAddr, &len);
@@ -208,8 +197,6 @@ int main(int argc, const char *argv[]) {
             perror("right accept fails\n");
             exit(1);
           }
-
-          printf("ID %d right port successfully accept\n", ID);
         }
 
         // reset buffer & update count
@@ -217,7 +204,6 @@ int main(int argc, const char *argv[]) {
         count++;
       }
     } else if (count == 2) {
-      printf("\nAll connection established! Let's get some potato!\n");
 
       int activity = 0;
       int max_fd = 1;
@@ -238,12 +224,10 @@ int main(int argc, const char *argv[]) {
         FD_SET(right_s_fd, &readfds);
         FD_SET(player_fd, &readfds);
 
-        printf("Just before select\n");
         activity = select(max_fd + 1, &readfds, NULL, NULL, NULL);
         if (activity < 0) {
           printf("Select error\n");
         }
-        printf("Just after select\n");
 
         // reset buffer
         memset(buffer, '\0', sizeof(buffer));
@@ -261,20 +245,15 @@ int main(int argc, const char *argv[]) {
           exit(1);
         }
 
-        printf("Copy buffer: '%s'\n", buffer);
         // parse buffer
-        int ending = 0;
         char temp[2048] = {'\0'};
         strcpy(temp, buffer);
 
         // count buffer
-        printf("Count buffer\n");
         if (temp[0] == '\0')
           break;
         char *curt = strtok(temp, " ");
-        printf("Strtok buffer");
         int count = atoi(curt);
-        printf("count: %d\n", count);
 
         if (count >= 0) { // not end
           // count how many iterations have been made
@@ -321,8 +300,6 @@ int main(int argc, const char *argv[]) {
               printf("Sending potato to %d\n", receiver);
             }
 
-            printf("I'm sending %s\n", buffer);
-
             // reset buffer
             memset(buffer, '\0', sizeof(buffer));
           }
@@ -336,7 +313,6 @@ int main(int argc, const char *argv[]) {
       close(left_fd);
       close(right_r_fd);
       close(right_s_fd);
-      printf("Disconnect, ready to exit\n");
       exit(1);
     }
   }
